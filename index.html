@@ -1,0 +1,382 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050a08">
+<title>JONY MAIL</title>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#050a08;color:#eafff2;
+ font-family:Arial,sans-serif;
+}
+header{
+ padding:18px;background:#08130e;
+ border-bottom:1px solid #00ff8844;
+ display:flex;justify-content:space-between;
+ align-items:center;flex-wrap:wrap;gap:10px;
+}
+.logo{font-size:23px;font-weight:bold;color:#00ff88}
+button{
+ background:#00ff88;color:#001b0d;
+ border:0;padding:11px 15px;border-radius:7px;
+ font-weight:bold;cursor:pointer;
+}
+button.secondary{background:#14251b;color:#00ff88}
+button.danger{background:#401515;color:#ff7777}
+.container{max-width:1100px;margin:auto;padding:15px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.stat{
+ background:#0c1711;border:1px solid #00ff8833;
+ border-radius:10px;padding:15px;flex:1;min-width:130px;
+}
+.stat strong{display:block;color:#00ff88;font-size:22px}
+.section{
+ background:#0b1510;border:1px solid #00ff8833;
+ border-radius:12px;padding:15px;margin-bottom:15px;
+}
+h3{color:#00ff88;margin-top:0}
+.accounts{display:flex;gap:9px;flex-wrap:wrap}
+.account{
+ padding:10px;background:#14251b;border-radius:8px;
+ font-size:12px;word-break:break-all;
+}
+.account button{margin-top:7px;padding:6px;font-size:11px}
+input{
+ width:100%;padding:13px;background:#101d15;
+ color:white;border:1px solid #00ff8855;
+ border-radius:8px;outline:none;margin-bottom:12px;
+}
+.mail{
+ padding:14px;border-bottom:1px solid #ffffff15;
+ cursor:pointer;
+}
+.mail:hover{background:#14251b}
+.mail strong{color:#fff}
+.mail small{display:block;color:#00ff88;margin-top:7px}
+.subject{margin-top:6px;color:#c4d8cb}
+.date{font-size:11px;color:#8da697;margin-top:6px}
+.tag{
+ display:inline-block;background:#143b27;
+ color:#00ff88;padding:5px 8px;
+ border-radius:5px;font-size:11px;margin-top:7px;
+}
+#reader{display:none;white-space:pre-wrap;overflow-wrap:anywhere}
+#status{color:#00ff88;font-size:13px;margin:10px 0}
+.empty{text-align:center;padding:35px;color:#82978a}
+footer{text-align:center;color:#62776a;padding:25px;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<header>
+ <div class="logo">⚡ JONY MAIL</div>
+ <button onclick="connectGmail()">+ CONNECT GMAIL</button>
+</header>
+
+<div class="container">
+
+<div class="stats">
+ <div class="stat">
+  <strong id="accountCount">0</strong>
+  Connected Gmail
+ </div>
+ <div class="stat">
+  <strong id="mailCount">0</strong>
+  Total Messages
+ </div>
+</div>
+
+<div class="section">
+ <h3>CONNECTED GMAIL ACCOUNTS</h3>
+ <div id="accounts" class="accounts">
+  <div class="empty">No Gmail connected yet.</div>
+ </div>
+</div>
+
+<div class="section">
+ <h3>ALL MAILBOX</h3>
+ <input id="search" placeholder="Search messages..." oninput="renderMails()">
+ <div style="display:flex;gap:8px;flex-wrap:wrap">
+  <button onclick="loadAll()">↻ REFRESH MAIL</button>
+  <button class="secondary" onclick="filterAccount('all')">ALL ACCOUNTS</button>
+ </div>
+ <div id="status">Connect your Gmail account to start.</div>
+ <div id="mailList"><div class="empty">Your messages will appear here.</div></div>
+</div>
+
+<div class="section" id="reader">
+ <button class="secondary" onclick="closeReader()">← BACK</button>
+ <h3 id="readSubject"></h3>
+ <div id="readInfo"></div>
+ <hr style="border-color:#244332">
+ <div id="readBody"></div>
+</div>
+
+</div>
+
+<footer>JONY MAIL · ALL YOUR GMAIL IN ONE PLACE</footer>
+
+<script>
+const CLIENT_ID =
+"807949128186-vspdj4p5n4k4da6sb9n28df43gois1b2.apps.googleusercontent.com";
+
+const SCOPES =
+"https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
+
+let accounts = [];
+let mails = [];
+let selectedAccount = "all";
+
+function status(text){
+ document.getElementById("status").textContent=text;
+}
+
+function connectGmail(){
+ if(!window.google){
+  alert("Google Login is loading. Try again in a moment.");
+  return;
+ }
+
+ const client = google.accounts.oauth2.initTokenClient({
+  client_id:CLIENT_ID,
+  scope:SCOPES,
+  prompt:"select_account",
+  callback:async(response)=>{
+   if(response.error){
+    status("Login failed: "+response.error);
+    return;
+   }
+
+   const token=response.access_token;
+
+   try{
+    const profile=await api(
+     "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+     token
+    );
+
+    if(accounts.some(a=>a.email===profile.emailAddress)){
+     alert("This Gmail is already connected.");
+     return;
+    }
+
+    accounts.push({
+     email:profile.emailAddress,
+     token:token
+    });
+
+    renderAccounts();
+    status(profile.emailAddress+" connected successfully.");
+    loadAll();
+
+   }catch(e){
+    status("Could not connect: "+e.message);
+   }
+  }
+ });
+
+ client.requestAccessToken();
+}
+
+async function api(url,token,options={}){
+ const response=await fetch(url,{
+  ...options,
+  headers:{
+   "Authorization":"Bearer "+token,
+   ...(options.headers||{})
+  }
+ });
+
+ if(!response.ok){
+  const err=await response.json().catch(()=>({}));
+  throw new Error(err.error?.message||response.statusText);
+ }
+ return response.json();
+}
+
+function renderAccounts(){
+ const box=document.getElementById("accounts");
+ document.getElementById("accountCount").textContent=accounts.length;
+
+ if(!accounts.length){
+  box.innerHTML='<div class="empty">No Gmail connected yet.</div>';
+  return;
+ }
+
+ box.innerHTML=accounts.map((a,i)=>`
+  <div class="account">
+   🟢 ${escapeHTML(a.email)}
+   <br>
+   <button class="secondary" onclick="filterAccount(${i})">VIEW MAIL</button>
+   <button class="danger" onclick="removeAccount(${i})">REMOVE</button>
+  </div>
+ `).join("");
+}
+
+function removeAccount(i){
+ if(!confirm("Remove this Gmail from JONY MAIL?"))return;
+ accounts.splice(i,1);
+ mails=mails.filter(m=>m.account!==i);
+ // Re-index the remaining mail account references.
+ mails=[];
+ renderAccounts();
+ renderMails();
+}
+
+async function loadAll(){
+ if(!accounts.length){
+  status("First connect a Gmail account.");
+  return;
+ }
+
+ mails=[];
+ status("Loading messages from all Gmail accounts...");
+
+ for(let i=0;i<accounts.length;i++){
+  const account=accounts[i];
+
+  try{
+   const result=await api(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30",
+    account.token
+   );
+
+   for(const item of (result.messages||[])){
+    try{
+     const msg=await api(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/"+
+      item.id+"?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date",
+      account.token
+     );
+
+     const headers=msg.payload?.headers||[];
+     const getHeader=(name)=>
+      headers.find(h=>h.name.toLowerCase()===name.toLowerCase())?.value||"";
+
+     mails.push({
+      id:item.id,
+      account:i,
+      email:account.email,
+      from:getHeader("From"),
+      subject:getHeader("Subject")||"(No subject)",
+      date:getHeader("Date"),
+      snippet:msg.snippet||"",
+      token:account.token
+     });
+    }catch(e){
+     console.log("Message error",e);
+    }
+   }
+  }catch(e){
+   status(account.email+": "+e.message);
+  }
+ }
+
+ mails.sort((a,b)=>new Date(b.date)-new Date(a.date));
+ document.getElementById("mailCount").textContent=mails.length;
+ renderMails();
+ status("Loaded "+mails.length+" messages from "+accounts.length+" Gmail accounts.");
+}
+
+function filterAccount(index){
+ selectedAccount=index;
+ renderMails();
+}
+
+function renderMails(){
+ const box=document.getElementById("mailList");
+ const query=document.getElementById("search").value.toLowerCase();
+
+ const filtered=mails.filter(m=>{
+  const accountMatch=selectedAccount==="all"||m.account===selectedAccount;
+  const searchMatch=(m.from+" "+m.subject+" "+m.snippet+" "+m.email).toLowerCase().includes(query);
+  return accountMatch&&searchMatch;
+ });
+
+ if(!filtered.length){
+  box.innerHTML='<div class="empty">No messages found.</div>';
+  return;
+ }
+
+ box.innerHTML=filtered.map(m=>`
+  <div class="mail" onclick="openMessage('${m.id}',${m.account})">
+   <strong>${escapeHTML(m.from)}</strong>
+   <div class="subject">${escapeHTML(m.subject)}</div>
+   <small>📩 To Gmail: ${escapeHTML(m.email)}</small>
+   <div class="date">${escapeHTML(m.date)}</div>
+   <div style="color:#9ab0a0;font-size:12px;margin-top:7px">
+    ${escapeHTML(m.snippet)}
+   </div>
+  </div>
+ `).join("");
+}
+
+async function openMessage(id,index){
+ const account=accounts[index];
+ if(!account)return;
+
+ status("Opening message...");
+ try{
+  const msg=await api(
+   "https://gmail.googleapis.com/gmail/v1/users/me/messages/"+id+"?format=full",
+   account.token
+  );
+
+  const headers=msg.payload?.headers||[];
+  const getHeader=name=>
+   headers.find(h=>h.name.toLowerCase()===name.toLowerCase())?.value||"";
+
+  document.getElementById("readSubject").textContent=getHeader("Subject");
+  document.getElementById("readInfo").innerHTML=
+   "<p>From: "+escapeHTML(getHeader("From"))+"</p>"+
+   "<p>Gmail Account: "+escapeHTML(account.email)+"</p>"+
+   "<p>Date: "+escapeHTML(getHeader("Date"))+"</p>";
+
+  document.getElementById("readBody").textContent=
+   extractBody(msg.payload)||msg.snippet||"No readable message body.";
+
+  document.getElementById("reader").style.display="block";
+  document.getElementById("reader").scrollIntoView({behavior:"smooth"});
+  status("Message opened.");
+ }catch(e){
+  status("Could not open message: "+e.message);
+ }
+}
+
+function extractBody(part){
+ if(!part)return "";
+ if(part.body?.data){
+  try{
+   let data=part.body.data.replace(/-/g,"+").replace(/_/g,"/");
+   data+="=".repeat((4-data.length%4)%4);
+   const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));
+   return new TextDecoder().decode(bytes);
+  }catch(e){}
+ }
+ for(const p of (part.parts||[])){
+  const body=extractBody(p);
+  if(body)return body;
+ }
+ return "";
+}
+
+function closeReader(){
+ document.getElementById("reader").style.display="none";
+}
+
+function escapeHTML(value){
+ return String(value??"").replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",
+  '"':"&quot;","'":"&#39;"
+ }[c]));
+}
+</script>
+</body>
+</html>
