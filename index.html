@@ -3,380 +3,886 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#050a08">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JONY MAIL</title>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
 <style>
+:root{
+  --bg:#080d0b;
+  --panel:#101914;
+  --panel2:#17231c;
+  --green:#19d477;
+  --text:#f0fff5;
+  --muted:#91a99a;
+  --border:#26392d;
+  --red:#ff5555;
+}
 *{box-sizing:border-box}
 body{
- margin:0;background:#050a08;color:#eafff2;
- font-family:Arial,sans-serif;
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:Arial,sans-serif;
 }
-header{
- padding:18px;background:#08130e;
- border-bottom:1px solid #00ff8844;
- display:flex;justify-content:space-between;
- align-items:center;flex-wrap:wrap;gap:10px;
+button,input{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+#authPage{
+  min-height:100vh;display:flex;align-items:center;
+  justify-content:center;padding:20px;
 }
-.logo{font-size:23px;font-weight:bold;color:#00ff88}
-button{
- background:#00ff88;color:#001b0d;
- border:0;padding:11px 15px;border-radius:7px;
- font-weight:bold;cursor:pointer;
+.auth-card{
+  width:100%;max-width:390px;background:var(--panel);
+  padding:28px;border:1px solid var(--border);
+  border-radius:20px;
 }
-button.secondary{background:#14251b;color:#00ff88}
-button.danger{background:#401515;color:#ff7777}
-.container{max-width:1100px;margin:auto;padding:15px}
-.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
-.stat{
- background:#0c1711;border:1px solid #00ff8833;
- border-radius:10px;padding:15px;flex:1;min-width:130px;
+.logo{font-size:29px;font-weight:900;color:var(--green)}
+.logo span{color:white}
+.subtitle{color:var(--muted);font-size:13px;margin:9px 0 25px}
+.field{
+  width:100%;padding:14px;background:#080f0b;
+  border:1px solid var(--border);border-radius:10px;
+  color:white;margin:7px 0;outline:none;
 }
-.stat strong{display:block;color:#00ff88;font-size:22px}
-.section{
- background:#0b1510;border:1px solid #00ff8833;
- border-radius:12px;padding:15px;margin-bottom:15px;
+.field:focus{border-color:var(--green)}
+.btn{
+  border:0;border-radius:10px;padding:13px 16px;
+  background:var(--green);color:#06150c;
+  font-weight:bold;width:100%;margin-top:10px;
 }
-h3{color:#00ff88;margin-top:0}
-.accounts{display:flex;gap:9px;flex-wrap:wrap}
-.account{
- padding:10px;background:#14251b;border-radius:8px;
- font-size:12px;word-break:break-all;
+.btn.secondary{
+  background:var(--panel2);color:white;
+  border:1px solid var(--border);
 }
-.account button{margin-top:7px;padding:6px;font-size:11px}
-input{
- width:100%;padding:13px;background:#101d15;
- color:white;border:1px solid #00ff8855;
- border-radius:8px;outline:none;margin-bottom:12px;
+.btn.danger{background:#4a2020;color:#ffaaaa}
+.auth-switch{
+  color:var(--green);cursor:pointer;text-align:center;
+  margin-top:17px;font-size:13px
 }
-.mail{
- padding:14px;border-bottom:1px solid #ffffff15;
- cursor:pointer;
+#app{min-height:100vh}
+.topbar{
+  height:65px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 17px;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:5;
 }
-.mail:hover{background:#14251b}
-.mail strong{color:#fff}
-.mail small{display:block;color:#00ff88;margin-top:7px}
-.subject{margin-top:6px;color:#c4d8cb}
-.date{font-size:11px;color:#8da697;margin-top:6px}
-.tag{
- display:inline-block;background:#143b27;
- color:#00ff88;padding:5px 8px;
- border-radius:5px;font-size:11px;margin-top:7px;
+.topbar .logo{font-size:23px}
+.top-actions{display:flex;gap:8px;align-items:center}
+.small-btn{
+  background:var(--panel2);border:1px solid var(--border);
+  color:white;padding:9px 12px;border-radius:9px;
 }
-#reader{display:none;white-space:pre-wrap;overflow-wrap:anywhere}
-#status{color:#00ff88;font-size:13px;margin:10px 0}
-.empty{text-align:center;padding:35px;color:#82978a}
-footer{text-align:center;color:#62776a;padding:25px;font-size:12px}
+.layout{display:flex;min-height:calc(100vh - 65px)}
+.sidebar{
+  width:250px;background:var(--panel);
+  border-right:1px solid var(--border);
+  padding:15px;flex-shrink:0;
+}
+.account-title{
+  font-size:11px;color:var(--muted);
+  margin:17px 8px 8px;text-transform:uppercase;
+  letter-spacing:1px
+}
+.nav{
+  display:flex;align-items:center;gap:12px;
+  padding:11px;border-radius:9px;color:#c7d9cd;
+  cursor:pointer;font-size:14px;margin:3px 0;
+}
+.nav:hover,.nav.active{
+  background:#173526;color:var(--green)
+}
+.nav .count{margin-left:auto;font-size:11px;color:var(--muted)}
+.account-item{
+  padding:10px;border-radius:9px;cursor:pointer;
+  color:#c7d9cd;font-size:13px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;
+}
+.account-item:hover,.account-item.active{
+  background:#173526;color:var(--green)
+}
+.main{flex:1;min-width:0;padding:18px}
+.heading{
+  display:flex;align-items:center;
+  justify-content:space-between;gap:10px;flex-wrap:wrap;
+  margin-bottom:16px
+}
+.heading h2{font-size:21px;margin:0}
+.search{
+  width:100%;max-width:420px;padding:12px 15px;
+  background:var(--panel);border:1px solid var(--border);
+  color:white;border-radius:10px;outline:none;
+}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+.toolbar button{
+  background:var(--panel);border:1px solid var(--border);
+  color:white;padding:9px 13px;border-radius:9px
+}
+.toolbar button:hover{border-color:var(--green)}
+.status{
+  color:var(--muted);font-size:12px;margin:10px 0
+}
+.message-list{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden
+}
+.message{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border-bottom:1px solid var(--border);
+  cursor:pointer;min-width:0
+}
+.message:last-child{border-bottom:0}
+.message:hover{background:#17251c}
+.message.unread .sender,.message.unread .subject{font-weight:bold;color:white}
+.sender{
+  width:190px;flex-shrink:0;font-size:13px;
+  color:#c4d6ca;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap
+}
+.message-content{flex:1;min-width:0}
+.subject{
+  font-size:13px;color:#e3eee7;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.snippet{
+  color:var(--muted);font-size:12px;margin-top:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.date{font-size:11px;color:var(--muted);white-space:nowrap}
+.source{
+  color:var(--green);font-size:10px;margin-top:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.empty{
+  padding:45px 15px;text-align:center;
+  color:var(--muted);font-size:14px
+}
+#reader{
+  position:fixed;inset:0;background:#080d0b;
+  z-index:20;display:none;overflow:auto;
+  padding:20px
+}
+.reader-box{
+  max-width:850px;margin:20px auto;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:15px;padding:20px
+}
+.reader-head{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:10px
+}
+.reader-meta{
+  color:var(--muted);font-size:13px;
+  line-height:1.8;margin:15px 0
+}
+.reader-body{
+  white-space:pre-wrap;overflow-wrap:anywhere;
+  line-height:1.7;font-size:14px
+}
+#toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%);background:#173526;
+  color:white;padding:12px 18px;border-radius:10px;
+  z-index:50;display:none;font-size:13px;
+  max-width:90%;text-align:center
+}
+.mobile-menu{display:none}
+@media(max-width:720px){
+  .sidebar{
+    position:fixed;left:-270px;top:65px;bottom:0;
+    z-index:10;transition:.2s;overflow:auto;
+    box-shadow:10px 0 30px #0008
+  }
+  .sidebar.open{left:0}
+  .mobile-menu{display:block}
+  .main{padding:13px}
+  .sender{width:105px}
+  .date{font-size:10px}
+  .message{gap:8px;padding:12px 9px}
+}
 </style>
 </head>
 
 <body>
 
-<header>
- <div class="logo">⚡ JONY MAIL</div>
- <button onclick="connectGmail()">+ CONNECT GMAIL</button>
-</header>
+<!-- LOGIN PAGE -->
+<section id="authPage">
+  <div class="auth-card">
+    <div class="logo">JONY<span> MAIL</span></div>
+    <div class="subtitle">Your Gmail accounts. One dashboard.</div>
 
-<div class="container">
+    <div id="loginForm">
+      <input id="loginEmail" class="field" type="email"
+        placeholder="JONY MAIL Email">
+      <input id="loginPassword" class="field" type="password"
+        placeholder="Password">
+      <button class="btn" onclick="login()">LOGIN</button>
+      <button class="btn secondary" onclick="googleLogin()">
+        Continue with Google
+      </button>
+      <div class="auth-switch" onclick="showSignup()">
+        Create a new JONY MAIL account
+      </div>
+    </div>
 
-<div class="stats">
- <div class="stat">
-  <strong id="accountCount">0</strong>
-  Connected Gmail
- </div>
- <div class="stat">
-  <strong id="mailCount">0</strong>
-  Total Messages
- </div>
+    <div id="signupForm" class="hidden">
+      <input id="signupEmail" class="field" type="email"
+        placeholder="Your Email">
+      <input id="signupPassword" class="field" type="password"
+        placeholder="Create Password">
+      <button class="btn" onclick="signup()">CREATE ACCOUNT</button>
+      <div class="auth-switch" onclick="showLogin()">
+        Already have an account? Login
+      </div>
+    </div>
+
+    <div id="authStatus" class="status"></div>
+  </div>
+</section>
+
+<!-- MAIN APP -->
+<section id="app" class="hidden">
+  <header class="topbar">
+    <div class="top-actions">
+      <button class="small-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+      <div class="logo">JONY<span> MAIL</span></div>
+    </div>
+    <div class="top-actions">
+      <button class="small-btn" onclick="reloadEverything()">↻ Refresh</button>
+      <button class="small-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <button class="btn" onclick="connectGmail()">＋ Connect Gmail</button>
+
+      <div class="account-title">Mailbox</div>
+      <div id="systemFolders"></div>
+
+      <div class="account-title">Connected Gmail</div>
+      <div class="nav active" id="allAccountsNav"
+        onclick="selectAllAccounts()">✉ All Accounts</div>
+      <div id="accountList"></div>
+    </aside>
+
+    <main class="main">
+      <div class="heading">
+        <h2 id="pageTitle">All Messages</h2>
+        <span class="status" id="accountCount">0 Gmail accounts</span>
+      </div>
+
+      <input class="search" id="searchBox"
+        placeholder="Search messages, sender, subject..."
+        oninput="renderMessages()">
+
+      <div class="toolbar">
+        <button onclick="reloadMessages()">↻ Refresh Messages</button>
+        <button onclick="connectGmail()">＋ Add Gmail</button>
+      </div>
+
+      <div class="status" id="loadStatus">Loading...</div>
+      <div class="message-list" id="messageList">
+        <div class="empty">Loading messages...</div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- MESSAGE READER -->
+<div id="reader">
+  <div class="reader-box">
+    <div class="reader-head">
+      <strong style="color:var(--green)">JONY MAIL</strong>
+      <button class="small-btn" onclick="closeReader()">✕ Close</button>
+    </div>
+    <h2 id="readSubject">Loading...</h2>
+    <div class="reader-meta" id="readMeta"></div>
+    <hr style="border-color:var(--border)">
+    <div class="reader-body" id="readBody"></div>
+  </div>
 </div>
 
-<div class="section">
- <h3>CONNECTED GMAIL ACCOUNTS</h3>
- <div id="accounts" class="accounts">
-  <div class="empty">No Gmail connected yet.</div>
- </div>
-</div>
-
-<div class="section">
- <h3>ALL MAILBOX</h3>
- <input id="search" placeholder="Search messages..." oninput="renderMails()">
- <div style="display:flex;gap:8px;flex-wrap:wrap">
-  <button onclick="loadAll()">↻ REFRESH MAIL</button>
-  <button class="secondary" onclick="filterAccount('all')">ALL ACCOUNTS</button>
- </div>
- <div id="status">Connect your Gmail account to start.</div>
- <div id="mailList"><div class="empty">Your messages will appear here.</div></div>
-</div>
-
-<div class="section" id="reader">
- <button class="secondary" onclick="closeReader()">← BACK</button>
- <h3 id="readSubject"></h3>
- <div id="readInfo"></div>
- <hr style="border-color:#244332">
- <div id="readBody"></div>
-</div>
-
-</div>
-
-<footer>JONY MAIL · ALL YOUR GMAIL IN ONE PLACE</footer>
+<div id="toast"></div>
 
 <script>
-const CLIENT_ID =
-"370585861930-2mgn160ebad39s3des7js84o4ke1nkgf.apps.googleusercontent.com";
+// ==================================================
+// FIREBASE CONFIGURATION
+// ==================================================
 
-const SCOPES =
-"https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
+const firebaseConfig = {
+  apiKey: "AIzaSyCnd_LT7H3o5HHbTFAZAHo6e2donTrN6sM",
+  authDomain: "jony-mail-hub-2466c.firebaseapp.com",
+  projectId: "jony-mail-hub-2466c",
+  storageBucket: "jony-mail-hub-2466c.firebasestorage.app",
+  messagingSenderId: "370585861930",
+  appId: "1:370585861930:web:e70dc809dd7c91046e2853",
+  measurementId: "G-2NMMQWBNQE"
+};
 
+// Your existing Render backend
+const API_BASE = "https://jony-mail-backend-2026.onrender.com";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+// ==================================================
+// APPLICATION STATE
+// ==================================================
+
+let currentUser = null;
 let accounts = [];
-let mails = [];
+let messages = [];
 let selectedAccount = "all";
+let selectedFolder = "ALL_MAIL";
+let customLabels = [];
+let loading = false;
 
-function status(text){
- document.getElementById("status").textContent=text;
+const SYSTEM_FOLDERS = [
+  {id:"ALL_MAIL",name:"All Messages",icon:"✉"},
+  {id:"INBOX",name:"Inbox",icon:"📥"},
+  {id:"STARRED",name:"Starred",icon:"⭐"},
+  {id:"SENT",name:"Sent",icon:"📤"},
+  {id:"DRAFT",name:"Drafts",icon:"📝"},
+  {id:"SPAM",name:"Spam",icon:"🚫"},
+  {id:"TRASH",name:"Trash",icon:"🗑"}
+];
+
+// ==================================================
+// HELPERS
+// ==================================================
+
+function $(id){
+  return document.getElementById(id);
 }
 
-function connectGmail(){
- if(!window.google){
-  alert("Google Login is loading. Try again in a moment.");
-  return;
- }
+function toast(message){
+  $("toast").textContent = message;
+  $("toast").style.display = "block";
+  setTimeout(()=>$("toast").style.display="none",3000);
+}
 
- const client = google.accounts.oauth2.initTokenClient({
-  client_id:CLIENT_ID,
-  scope:SCOPES,
-  prompt:"select_account",
-  callback:async(response)=>{
-   if(response.error){
-    status("Login failed: "+response.error);
-    return;
-   }
+function showStatus(message){
+  $("loadStatus").textContent = message;
+}
 
-   const token=response.access_token;
+function showLogin(){
+  $("loginForm").classList.remove("hidden");
+  $("signupForm").classList.add("hidden");
+  $("authStatus").textContent = "";
+}
 
-   try{
-    const profile=await api(
-     "https://gmail.googleapis.com/gmail/v1/users/me/profile",
-     token
-    );
+function showSignup(){
+  $("loginForm").classList.add("hidden");
+  $("signupForm").classList.remove("hidden");
+  $("authStatus").textContent = "";
+}
 
-    if(accounts.some(a=>a.email===profile.emailAddress)){
-     alert("This Gmail is already connected.");
-     return;
+function formatDate(value){
+  if(!value) return "";
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return value;
+  return d.toLocaleDateString();
+}
+
+async function api(path,options={}){
+  if(!currentUser) throw new Error("Please login first");
+
+  const token = await currentUser.getIdToken();
+
+  const response = await fetch(API_BASE + path,{
+    ...options,
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+token,
+      ...(options.headers || {})
     }
+  });
 
-    accounts.push({
-     email:profile.emailAddress,
-     token:token
-    });
+  let data;
+  try{
+    data = await response.json();
+  }catch(e){
+    throw new Error("Invalid server response");
+  }
+
+  if(!response.ok){
+    throw new Error(data.message || "Server request failed");
+  }
+
+  return data;
+}
+
+// ==================================================
+// AUTHENTICATION
+// ==================================================
+
+async function login(){
+  const email = $("loginEmail").value.trim();
+  const password = $("loginPassword").value;
+
+  if(!email || !password){
+    $("authStatus").textContent = "Enter email and password.";
+    return;
+  }
+
+  try{
+    $("authStatus").textContent = "Logging in...";
+    await auth.signInWithEmailAndPassword(email,password);
+  }catch(error){
+    $("authStatus").textContent = error.message;
+  }
+}
+
+async function signup(){
+  const email = $("signupEmail").value.trim();
+  const password = $("signupPassword").value;
+
+  if(!email || password.length < 6){
+    $("authStatus").textContent =
+      "Enter a valid email and password (at least 6 characters).";
+    return;
+  }
+
+  try{
+    $("authStatus").textContent = "Creating account...";
+    await auth.createUserWithEmailAndPassword(email,password);
+  }catch(error){
+    $("authStatus").textContent = error.message;
+  }
+}
+
+async function googleLogin(){
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  }catch(error){
+    $("authStatus").textContent = error.message;
+  }
+}
+
+async function logout(){
+  await auth.signOut();
+}
+
+auth.onAuthStateChanged(async user=>{
+  currentUser = user;
+
+  if(user){
+    $("authPage").classList.add("hidden");
+    $("app").classList.remove("hidden");
+
+    showStatus("Restoring your saved Gmail accounts...");
+    await loadAccounts();
+  }else{
+    $("app").classList.add("hidden");
+    $("authPage").classList.remove("hidden");
+
+    accounts = [];
+    messages = [];
+  }
+});
+
+// ==================================================
+// RESTORE SAVED GMAIL ACCOUNTS
+// ==================================================
+
+async function loadAccounts(){
+  try{
+    const result = await api("/api/gmail/accounts");
+    accounts = result.accounts || [];
+
+    $("accountCount").textContent =
+      accounts.length + " Gmail accounts";
 
     renderAccounts();
-    status(profile.emailAddress+" connected successfully.");
-    loadAll();
 
-   }catch(e){
-    status("Could not connect: "+e.message);
-   }
+    if(accounts.length === 0){
+      messages = [];
+      renderMessages();
+      showStatus("No Gmail connected. Connect your first Gmail.");
+      return;
+    }
+
+    showStatus("Gmail accounts restored successfully.");
+    await loadMessages();
+
+  }catch(error){
+    showStatus(error.message);
+    toast(error.message);
   }
- });
-
- client.requestAccessToken();
-}
-
-async function api(url,token,options={}){
- const response=await fetch(url,{
-  ...options,
-  headers:{
-   "Authorization":"Bearer "+token,
-   ...(options.headers||{})
-  }
- });
-
- if(!response.ok){
-  const err=await response.json().catch(()=>({}));
-  throw new Error(err.error?.message||response.statusText);
- }
- return response.json();
 }
 
 function renderAccounts(){
- const box=document.getElementById("accounts");
- document.getElementById("accountCount").textContent=accounts.length;
+  const container = $("accountList");
+  container.innerHTML = "";
 
- if(!accounts.length){
-  box.innerHTML='<div class="empty">No Gmail connected yet.</div>';
-  return;
- }
+  accounts.forEach(account=>{
+    const item = document.createElement("div");
+    item.className = "account-item" +
+      (selectedAccount === account.id ? " active" : "");
 
- box.innerHTML=accounts.map((a,i)=>`
-  <div class="account">
-   🟢 ${escapeHTML(a.email)}
-   <br>
-   <button class="secondary" onclick="filterAccount(${i})">VIEW MAIL</button>
-   <button class="danger" onclick="removeAccount(${i})">REMOVE</button>
-  </div>
- `).join("");
+    item.textContent = "✉ " + account.email;
+    item.title = account.email;
+
+    item.onclick = ()=>{
+      selectedAccount = account.id;
+      selectedFolder = "INBOX";
+      renderAccounts();
+      renderFolders();
+      loadMessages();
+      $("sidebar").classList.remove("open");
+    };
+
+    container.appendChild(item);
+  });
+
+  renderFolders();
 }
 
-function removeAccount(i){
- if(!confirm("Remove this Gmail from JONY MAIL?"))return;
- accounts.splice(i,1);
- mails=mails.filter(m=>m.account!==i);
- // Re-index the remaining mail account references.
- mails=[];
- renderAccounts();
- renderMails();
+function selectAllAccounts(){
+  selectedAccount = "all";
+  selectedFolder = "ALL_MAIL";
+  renderAccounts();
+  loadMessages();
+  $("sidebar").classList.remove("open");
 }
 
-async function loadAll(){
- if(!accounts.length){
-  status("First connect a Gmail account.");
-  return;
- }
+function toggleSidebar(){
+  $("sidebar").classList.toggle("open");
+}
 
- mails=[];
- status("Loading messages from all Gmail accounts...");
+// ==================================================
+// FOLDERS AND LABELS
+// ==================================================
 
- for(let i=0;i<accounts.length;i++){
-  const account=accounts[i];
+function renderFolders(){
+  const container = $("systemFolders");
+  container.innerHTML = "";
 
-  try{
-   const result=await api(
-    "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30",
-    account.token
-   );
+  SYSTEM_FOLDERS.forEach(folder=>{
+    const item = document.createElement("div");
 
-   for(const item of (result.messages||[])){
-    try{
-     const msg=await api(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages/"+
-      item.id+"?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date",
-      account.token
-     );
+    item.className = "nav" +
+      (selectedFolder === folder.id ? " active" : "");
 
-     const headers=msg.payload?.headers||[];
-     const getHeader=(name)=>
-      headers.find(h=>h.name.toLowerCase()===name.toLowerCase())?.value||"";
+    item.textContent = folder.icon + " " + folder.name;
 
-     mails.push({
-      id:item.id,
-      account:i,
-      email:account.email,
-      from:getHeader("From"),
-      subject:getHeader("Subject")||"(No subject)",
-      date:getHeader("Date"),
-      snippet:msg.snippet||"",
-      token:account.token
-     });
-    }catch(e){
-     console.log("Message error",e);
-    }
-   }
-  }catch(e){
-   status(account.email+": "+e.message);
+    item.onclick = ()=>{
+      selectedFolder = folder.id;
+      renderFolders();
+      loadMessages();
+      $("sidebar").classList.remove("open");
+    };
+
+    container.appendChild(item);
+  });
+
+  if(selectedAccount !== "all"){
+    loadCustomLabels();
   }
- }
-
- mails.sort((a,b)=>new Date(b.date)-new Date(a.date));
- document.getElementById("mailCount").textContent=mails.length;
- renderMails();
- status("Loaded "+mails.length+" messages from "+accounts.length+" Gmail accounts.");
 }
 
-function filterAccount(index){
- selectedAccount=index;
- renderMails();
-}
-
-function renderMails(){
- const box=document.getElementById("mailList");
- const query=document.getElementById("search").value.toLowerCase();
-
- const filtered=mails.filter(m=>{
-  const accountMatch=selectedAccount==="all"||m.account===selectedAccount;
-  const searchMatch=(m.from+" "+m.subject+" "+m.snippet+" "+m.email).toLowerCase().includes(query);
-  return accountMatch&&searchMatch;
- });
-
- if(!filtered.length){
-  box.innerHTML='<div class="empty">No messages found.</div>';
-  return;
- }
-
- box.innerHTML=filtered.map(m=>`
-  <div class="mail" onclick="openMessage('${m.id}',${m.account})">
-   <strong>${escapeHTML(m.from)}</strong>
-   <div class="subject">${escapeHTML(m.subject)}</div>
-   <small>📩 To Gmail: ${escapeHTML(m.email)}</small>
-   <div class="date">${escapeHTML(m.date)}</div>
-   <div style="color:#9ab0a0;font-size:12px;margin-top:7px">
-    ${escapeHTML(m.snippet)}
-   </div>
-  </div>
- `).join("");
-}
-
-async function openMessage(id,index){
- const account=accounts[index];
- if(!account)return;
-
- status("Opening message...");
- try{
-  const msg=await api(
-   "https://gmail.googleapis.com/gmail/v1/users/me/messages/"+id+"?format=full",
-   account.token
-  );
-
-  const headers=msg.payload?.headers||[];
-  const getHeader=name=>
-   headers.find(h=>h.name.toLowerCase()===name.toLowerCase())?.value||"";
-
-  document.getElementById("readSubject").textContent=getHeader("Subject");
-  document.getElementById("readInfo").innerHTML=
-   "<p>From: "+escapeHTML(getHeader("From"))+"</p>"+
-   "<p>Gmail Account: "+escapeHTML(account.email)+"</p>"+
-   "<p>Date: "+escapeHTML(getHeader("Date"))+"</p>";
-
-  document.getElementById("readBody").textContent=
-   extractBody(msg.payload)||msg.snippet||"No readable message body.";
-
-  document.getElementById("reader").style.display="block";
-  document.getElementById("reader").scrollIntoView({behavior:"smooth"});
-  status("Message opened.");
- }catch(e){
-  status("Could not open message: "+e.message);
- }
-}
-
-function extractBody(part){
- if(!part)return "";
- if(part.body?.data){
+async function loadCustomLabels(){
   try{
-   let data=part.body.data.replace(/-/g,"+").replace(/_/g,"/");
-   data+="=".repeat((4-data.length%4)%4);
-   const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));
-   return new TextDecoder().decode(bytes);
-  }catch(e){}
- }
- for(const p of (part.parts||[])){
-  const body=extractBody(p);
-  if(body)return body;
- }
- return "";
+    const result = await api(
+      "/api/gmail/labels?accountId="+
+      encodeURIComponent(selectedAccount)
+    );
+
+    customLabels = (result.labels || []).filter(
+      label=>label.type === "user"
+    );
+
+    const container = $("systemFolders");
+
+    const heading = document.createElement("div");
+    heading.className = "account-title";
+    heading.textContent = "Custom Labels";
+    container.appendChild(heading);
+
+    customLabels.forEach(label=>{
+      const item = document.createElement("div");
+      item.className = "nav" +
+        (selectedFolder === label.id ? " active" : "");
+
+      item.textContent = "🏷 " + label.name;
+
+      item.onclick = ()=>{
+        selectedFolder = label.id;
+        renderFolders();
+        loadMessages();
+      };
+
+      container.appendChild(item);
+    });
+
+  }catch(error){
+    // Custom label API requires the updated backend.
+    console.log("Labels unavailable:",error.message);
+  }
+}
+
+// ==================================================
+// LOAD EMAILS
+// ==================================================
+
+async function loadMessages(){
+  if(loading) return;
+
+  if(accounts.length === 0){
+    messages = [];
+    renderMessages();
+    return;
+  }
+
+  loading = true;
+  messages = [];
+  renderMessages();
+  showStatus("Loading messages...");
+
+  $("pageTitle").textContent =
+    getFolderName(selectedFolder);
+
+  try{
+    let selectedAccounts;
+
+    if(selectedAccount === "all"){
+      selectedAccounts = accounts;
+    }else{
+      selectedAccounts = accounts.filter(
+        account=>account.id === selectedAccount
+      );
+    }
+
+    const results = await Promise.allSettled(
+      selectedAccounts.map(async account=>{
+        const params = new URLSearchParams({
+          accountId:account.id,
+          labelId:selectedFolder,
+          maxResults:"40"
+        });
+
+        const result = await api(
+          "/api/gmail/messages?"+params.toString()
+        );
+
+        return (result.messages || []).map(message=>({
+          ...message,
+          accountId:account.id,
+          email:account.email
+        }));
+      })
+    );
+
+    results.forEach(result=>{
+      if(result.status === "fulfilled"){
+        messages.push(...result.value);
+      }else{
+        console.error(result.reason);
+      }
+    });
+
+    messages.sort((a,b)=>{
+      return new Date(b.date || 0)-new Date(a.date || 0);
+    });
+
+    const failed = results.filter(
+      result=>result.status==="rejected"
+    ).length;
+
+    showStatus(
+      messages.length+" messages loaded"+
+      (failed ? " · "+failed+" account(s) could not load." : "")
+    );
+
+    renderMessages();
+
+  }catch(error){
+    showStatus(error.message);
+    toast(error.message);
+  }finally{
+    loading = false;
+  }
+}
+
+function getFolderName(id){
+  const folder = SYSTEM_FOLDERS.find(f=>f.id===id);
+  if(folder) return folder.name;
+
+  const custom = customLabels.find(f=>f.id===id);
+  return custom ? custom.name : "Messages";
+}
+
+function reloadMessages(){
+  loadMessages();
+}
+
+function reloadEverything(){
+  loadAccounts();
+}
+
+// ==================================================
+// MESSAGE DISPLAY AND SEARCH
+// ==================================================
+
+function renderMessages(){
+  const container = $("messageList");
+  const query = $("searchBox").value.toLowerCase().trim();
+
+  const filtered = messages.filter(message=>{
+    const text = [
+      message.from,
+      message.to,
+      message.subject,
+      message.snippet,
+      message.email
+    ].join(" ").toLowerCase();
+
+    return text.includes(query);
+  });
+
+  container.innerHTML = "";
+
+  if(filtered.length===0){
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = query
+      ? "No matching messages found."
+      : "No messages in this folder.";
+    container.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(message=>{
+    const row = document.createElement("div");
+    row.className = "message" +
+      (message.unread ? " unread" : "");
+
+    const sender = document.createElement("div");
+    sender.className = "sender";
+    sender.textContent = message.from || "(Unknown sender)";
+
+    const content = document.createElement("div");
+    content.className = "message-content";
+
+    const subject = document.createElement("div");
+    subject.className = "subject";
+    subject.textContent = message.subject || "(No subject)";
+
+    const snippet = document.createElement("div");
+    snippet.className = "snippet";
+    snippet.textContent = message.snippet || "";
+
+    const source = document.createElement("div");
+    source.className = "source";
+    source.textContent = message.email || "";
+
+    content.append(subject,snippet,source);
+
+    const date = document.createElement("div");
+    date.className = "date";
+    date.textContent = formatDate(message.date);
+
+    row.append(sender,content,date);
+    row.onclick = ()=>openMessage(message);
+
+    container.appendChild(row);
+  });
+}
+
+// ==================================================
+// READ EMAIL
+// ==================================================
+
+async function openMessage(message){
+  $("reader").style.display = "block";
+  $("readSubject").textContent = "Loading message...";
+  $("readMeta").textContent = "";
+  $("readBody").textContent = "";
+
+  try{
+    const params = new URLSearchParams({
+      accountId:message.accountId,
+      id:message.id
+    });
+
+    const result = await api(
+      "/api/gmail/message?"+params.toString()
+    );
+
+    const mail = result.message;
+
+    $("readSubject").textContent =
+      mail.subject || "(No subject)";
+
+    $("readMeta").textContent =
+      "From: "+(mail.from || "")+
+      "\nTo: "+(mail.to || "")+
+      "\nDate: "+(mail.date || "")+
+      "\nGmail: "+(message.email || "");
+
+    // Display returned body as plain text.
+    $("readBody").textContent = mail.body || mail.snippet || "";
+
+  }catch(error){
+    $("readSubject").textContent = "Could not open message";
+    $("readBody").textContent = error.message;
+  }
 }
 
 function closeReader(){
- document.getElementById("reader").style.display="none";
+  $("reader").style.display = "none";
 }
 
-function escapeHTML(value){
- return String(value??"").replace(/[&<>"']/g,c=>({
-  "&":"&amp;","<":"&lt;",">":"&gt;",
-  '"':"&quot;","'":"&#39;"
- }[c]));
+// ==================================================
+// CONNECT GMAIL
+// ==================================================
+
+async function connectGmail(){
+  if(accounts.length>=20){
+    toast("Maximum 20 Gmail accounts allowed.");
+    return;
+  }
+
+  try{
+    toast("Starting Gmail connection...");
+
+    const result = await api("/api/gmail/connect",{
+      method:"POST",
+      body:JSON.stringify({})
+    });
+
+    if(!result.authUrl){
+      throw new Error("Google authorization URL missing");
+    }
+
+    window.location.href = result.authUrl;
+
+  }catch(error){
+    toast(error.message);
+  }
 }
+
+// ==================================================
+// PAGE STARTUP AND OAUTH RETURN
+// ==================================================
+
+window.addEventListener("load",()=>{
+  const params = new URLSearchParams(location.search);
+
+  if(params.get("gmail_connected")==="1"){
+    toast("Gmail connected successfully!");
+    history.replaceState({},document.title,location.pathname);
+  }
+
+  if(params.get("gmail_error")){
+    toast("Gmail connection failed. Please try again.");
+    history.replaceState({},document.title,location.pathname);
+  }
+});
 </script>
 </body>
 </html>
