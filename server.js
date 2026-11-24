@@ -8,20 +8,12 @@ const admin = require("firebase-admin");
 const { google } = require("googleapis");
 
 const app = express();
-
 app.use(express.json({ limit: "1mb" }));
 
 const PORT = process.env.PORT || 10000;
+const FRONTEND_URL = process.env.FRONTEND_URL;
+const DASHBOARD_URL = "https://mrjony127.github.io/JONYMAILWEB/";
 
-// Website addresses
-const FRONTEND_URL = (
-  process.env.FRONTEND_URL || "https://mrjony127.github.io"
-).replace(/\/+$/, "");
-
-const DASHBOARD_URL =
-  "https://mrjony127.github.io/JONYMAILWEB/";
-
-// Required environment variables
 const REQUIRED_ENV = [
   "FRONTEND_URL",
   "FIREBASE_PROJECT_ID",
@@ -41,30 +33,35 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-// CORS
+if (!/^[a-f0-9]{64}$/i.test(process.env.TOKEN_ENCRYPTION_KEY)) {
+  console.error("TOKEN_ENCRYPTION_KEY must be 64 hexadecimal characters.");
+  process.exit(1);
+}
+
+const ENCRYPTION_KEY = Buffer.from(
+  process.env.TOKEN_ENCRYPTION_KEY,
+  "hex"
+);
+
 const allowedOrigins = [
-  "https://mrjony127.github.io",
-  FRONTEND_URL,
+  FRONTEND_URL.replace(/\/$/, ""),
   "http://localhost:3000",
   "http://127.0.0.1:5500"
 ];
 
 app.use(cors({
   origin(origin, callback) {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin.replace(/\/+$/, ""))
-    ) {
+    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
       return callback(null, true);
     }
-
     return callback(new Error("Origin not allowed by CORS"));
   },
   methods: ["GET", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// FIREBASE ADMIN
+/* FIREBASE */
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -77,7 +74,8 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// GOOGLE OAUTH
+/* GOOGLE OAUTH */
+
 const oauthClient = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
@@ -90,18 +88,11 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly"
 ];
 
-// ENCRYPTION
-const ENCRYPTION_KEY = Buffer.from(
-  process.env.TOKEN_ENCRYPTION_KEY,
-  "hex"
-);
-
-if (ENCRYPTION_KEY.length !== 32) {
-  console.error(
-    "TOKEN_ENCRYPTION_KEY must be exactly 64 hexadecimal characters."
-  );
-  process.exit(1);
-}
+/* TOKEN ENCRYPTION
+   Supports:
+   1. Old Firestore Map: {iv, data, tag}
+   2. New String: iv:tag:encryptedData
+*/
 
 function encryptToken(value) {
   const iv = crypto.randomBytes(12);
@@ -127,15 +118,35 @@ function encryptToken(value) {
 }
 
 function decryptToken(value) {
-  const parts = String(value || "").split(":");
+  let iv;
+  let tag;
+  let encrypted;
 
-  if (parts.length !== 3) {
-    throw new Error("Invalid encrypted Gmail token.");
+  // Old Firestore Map format
+  if (value && typeof value === "object") {
+    iv = Buffer.from(value.iv, "hex");
+    tag = Buffer.from(value.tag, "hex");
+    encrypted = Buffer.from(value.data, "hex");
   }
 
-  const iv = Buffer.from(parts[0], "hex");
-  const tag = Buffer.from(parts[1], "hex");
-  const encrypted = Buffer.from(parts[2], "hex");
+  // New String format
+  else if (typeof value === "string") {
+    const parts = value.split(":");
+
+    if (parts.length !== 3) {
+      throw new Error("Invalid encrypted Gmail token format.");
+    }
+
+    iv = Buffer.from(parts[0], "hex");
+    tag = Buffer.from(parts[1], "hex");
+    encrypted = Buffer.from(parts[2], "hex");
+  } else {
+    throw new Error("Gmail refresh token is missing.");
+  }
+
+  if (iv.length !== 12 || tag.length !== 16 || !encrypted.length) {
+    throw new Error("Invalid encrypted Gmail token data.");
+  }
 
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
@@ -151,7 +162,20 @@ function decryptToken(value) {
   ]).toString("utf8");
 }
 
-// SIGNED OAUTH STATE
+function getStoredRefreshToken(account) {
+  if (account.encryptedRefreshToken) {
+    return decryptToken(account.encryptedRefreshToken);
+  }
+
+  if (account.refreshToken) {
+    return decryptToken(account.refreshToken);
+  }
+
+  return null;
+}
+
+/* OAUTH STATE */
+
 function createOAuthState(uid) {
   const payload = Buffer.from(JSON.stringify({
     uid,
@@ -168,11 +192,7 @@ function createOAuthState(uid) {
 }
 
 function verifyOAuthState(state) {
-  if (!state || typeof state !== "string") {
-    throw new Error("Missing OAuth state.");
-  }
-
-  const parts = state.split(".");
+  const parts = String(state || "").split(".");
 
   if (parts.length !== 2) {
     throw new Error("Invalid OAuth state.");
@@ -188,10 +208,7 @@ function verifyOAuthState(state) {
   const a = Buffer.from(signature, "hex");
   const b = Buffer.from(expected, "hex");
 
-  if (
-    a.length !== b.length ||
-    !crypto.timingSafeEqual(a, b)
-  ) {
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     throw new Error("OAuth state verification failed.");
   }
 
@@ -199,29 +216,20 @@ function verifyOAuthState(state) {
     Buffer.from(payload, "base64url").toString("utf8")
   );
 
-  if (!data.uid || !data.time) {
-    throw new Error("Invalid OAuth state data.");
-  }
-
-  if (Date.now() - data.time > 10 * 60 * 1000) {
-    throw new Error("OAuth request expired. Please try again.");
+  if (
+    !data.uid ||
+    !data.time ||
+    Date.now() - data.time > 10 * 60 * 1000 ||
+    data.time > Date.now() + 60 * 1000
+  ) {
+    throw new Error("OAuth request expired.");
   }
 
   return data;
 }
 
-// DASHBOARD REDIRECT HELPERS
-function redirectDashboard(res, params = {}) {
-  const url = new URL(DASHBOARD_URL);
+/* FIREBASE AUTH */
 
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, String(value));
-  }
-
-  return res.redirect(302, url.toString());
-}
-
-// FIREBASE AUTH MIDDLEWARE
 async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || "";
@@ -235,12 +243,9 @@ async function requireAuth(req, res, next) {
 
     const token = header.slice(7);
 
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    req.user = decoded;
+    req.user = await admin.auth().verifyIdToken(token);
 
     next();
-
   } catch (error) {
     console.error("Authentication error:", error.message);
 
@@ -251,7 +256,8 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// FIRESTORE ACCOUNT HELPERS
+/* FIRESTORE HELPERS */
+
 function accountCollection(uid) {
   return db.collection("users")
     .doc(uid)
@@ -267,9 +273,7 @@ async function getAccount(uid, accountId) {
     throw new Error("Gmail account ID is required.");
   }
 
-  const snapshot = await accountCollection(uid)
-    .doc(accountId)
-    .get();
+  const snapshot = await accountCollection(uid).doc(accountId).get();
 
   if (!snapshot.exists) {
     throw new Error("Gmail account not found.");
@@ -281,43 +285,50 @@ async function getAccount(uid, accountId) {
   };
 }
 
+/* GMAIL CLIENT */
+
 async function getGmail(uid, accountId) {
   const account = await getAccount(uid, accountId);
 
-  if (!account.encryptedRefreshToken) {
-    throw new Error(
-      "Gmail connection is missing. Reconnect this account."
-    );
+  const refreshToken = getStoredRefreshToken(account);
+
+  if (!refreshToken) {
+    throw new Error("Gmail refresh token is missing. Reconnect this account.");
   }
 
-  const refreshToken = decryptToken(
-    account.encryptedRefreshToken
-  );
+  // Migrate old Map format to the new encrypted string format.
+  if (!account.encryptedRefreshToken) {
+    await accountCollection(uid).doc(accountId).set({
+      encryptedRefreshToken: encryptToken(refreshToken),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
-  const client = new google.auth.OAuth2(
+    console.log("Legacy Gmail token migrated:", account.email);
+  }
+
+  const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
 
-  client.setCredentials({
+  auth.setCredentials({
     refresh_token: refreshToken
   });
 
   const gmail = google.gmail({
     version: "v1",
-    auth: client
+    auth
   });
 
   return { gmail, account };
 }
 
-// EMAIL HELPERS
+/* EMAIL HELPERS */
+
 function getHeader(headers, name) {
   const header = (headers || []).find(
-    item =>
-      item.name &&
-      item.name.toLowerCase() === name.toLowerCase()
+    item => item.name.toLowerCase() === name.toLowerCase()
   );
 
   return header ? header.value : "";
@@ -384,26 +395,18 @@ function extractBody(payload) {
 
 function mapMessage(message, account) {
   const headers = message.payload?.headers || [];
-
-  const from = getHeader(headers, "From");
-  const to = getHeader(headers, "To");
-  const subject = getHeader(headers, "Subject");
-  const dateHeader = getHeader(headers, "Date");
-
-  const internalDate = message.internalDate
-    ? new Date(Number(message.internalDate)).toISOString()
-    : dateHeader || null;
-
   const labels = message.labelIds || [];
 
   return {
     id: message.id,
     threadId: message.threadId,
-    from,
-    to,
-    subject: subject || "(No subject)",
+    from: getHeader(headers, "From"),
+    to: getHeader(headers, "To"),
+    subject: getHeader(headers, "Subject") || "(No subject)",
     snippet: message.snippet || "",
-    date: internalDate,
+    date: message.internalDate
+      ? new Date(Number(message.internalDate)).toISOString()
+      : getHeader(headers, "Date"),
     unread: labels.includes("UNREAD"),
     labelIds: labels,
     email: account.email,
@@ -411,7 +414,8 @@ function mapMessage(message, account) {
   };
 }
 
-// HEALTH CHECK
+/* HEALTH CHECK */
+
 app.get("/", (req, res) => {
   res.json({
     name: "JONY MAIL",
@@ -421,7 +425,16 @@ app.get("/", (req, res) => {
   });
 });
 
-// CONNECT GMAIL
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    backend: "online",
+    firebase: "connected"
+  });
+});
+
+/* CONNECT GMAIL */
+
 app.post("/api/gmail/connect", requireAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -445,49 +458,43 @@ app.post("/api/gmail/connect", requireAuth, async (req, res) => {
       state
     });
 
-    return res.json({
+    res.json({
       success: true,
       authUrl
     });
-
   } catch (error) {
     console.error("Connect error:", error);
-
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
 
-// GOOGLE OAUTH CALLBACK
+/* GOOGLE OAUTH CALLBACK */
+
 app.get("/api/gmail/callback", async (req, res) => {
   try {
-    const { code, state, error } = req.query;
-
-    if (error) {
-      return redirectDashboard(res, {
-        gmail_error: String(error)
-      });
+    if (req.query.error) {
+      return res.redirect(
+        DASHBOARD_URL + "?gmail_error=" +
+        encodeURIComponent(String(req.query.error))
+      );
     }
 
+    const { code, state } = req.query;
+
     if (!code || !state) {
-      throw new Error(
-        "Missing Google authorization code or state."
-      );
+      throw new Error("Missing Google authorization code or state.");
     }
 
     const stateData = verifyOAuthState(state);
     const uid = stateData.uid;
 
-    const { tokens } = await oauthClient.getToken(
-      String(code)
-    );
+    const { tokens } = await oauthClient.getToken(String(code));
 
     if (!tokens.access_token) {
-      throw new Error(
-        "Google did not return an access token."
-      );
+      throw new Error("Google did not return an access token.");
     }
 
     oauthClient.setCredentials(tokens);
@@ -501,26 +508,19 @@ app.get("/api/gmail/callback", async (req, res) => {
     const email = userInfo.data.email;
 
     if (!email) {
-      throw new Error(
-        "Could not identify the Gmail account."
-      );
+      throw new Error("Could not identify the Gmail account.");
     }
 
     const accountId = accountDocumentId(email);
-
-    const accountRef = accountCollection(uid)
-      .doc(accountId);
-
+    const accountRef = accountCollection(uid).doc(accountId);
     const oldAccount = await accountRef.get();
 
-    let refreshToken = tokens.refresh_token;
+    let refreshToken = tokens.refresh_token || null;
 
+    // If Google does not return a new refresh token,
+    // try to recover the old encrypted or legacy token.
     if (!refreshToken && oldAccount.exists) {
-      const oldData = oldAccount.data();
-
-      refreshToken = oldData.encryptedRefreshToken
-        ? decryptToken(oldData.encryptedRefreshToken)
-        : null;
+      refreshToken = getStoredRefreshToken(oldAccount.data());
     }
 
     if (!refreshToken) {
@@ -532,13 +532,12 @@ app.get("/api/gmail/callback", async (req, res) => {
     const allAccounts = await accountCollection(uid).get();
 
     if (!oldAccount.exists && allAccounts.size >= 20) {
-      throw new Error(
-        "Maximum 20 Gmail accounts allowed."
-      );
+      throw new Error("Maximum 20 Gmail accounts allowed.");
     }
 
     await accountRef.set({
       email,
+      connected: true,
       encryptedRefreshToken: encryptToken(refreshToken),
       connectedAt: oldAccount.exists
         ? oldAccount.data().connectedAt ||
@@ -549,57 +548,52 @@ app.get("/api/gmail/callback", async (req, res) => {
 
     console.log("Gmail account connected:", email);
 
-    // SUCCESS: RETURN TO JONY MAIL DASHBOARD
-    return redirectDashboard(res, {
-      gmail_connected: "1"
-    });
-
+    return res.redirect(
+      DASHBOARD_URL + "?gmail_connected=1"
+    );
   } catch (error) {
     console.error("OAuth callback error:", error);
 
-    // ERROR: ALSO RETURN TO JONY MAIL DASHBOARD
-    return redirectDashboard(res, {
-      gmail_error: error.message || "connection_failed"
-    });
+    return res.redirect(
+      DASHBOARD_URL + "?gmail_error=" +
+      encodeURIComponent(error.message || "connection_failed")
+    );
   }
 });
 
-// LIST CONNECTED GMAIL ACCOUNTS
+/* LIST CONNECTED ACCOUNTS */
+
 app.get("/api/gmail/accounts", requireAuth, async (req, res) => {
   try {
-    const snapshot = await accountCollection(
-      req.user.uid
-    ).get();
+    const snapshot = await accountCollection(req.user.uid).get();
 
-    const accounts = snapshot.docs.map(doc => {
-      const data = doc.data();
-
-      return {
+    const accounts = snapshot.docs
+      .filter(doc => doc.data().connected !== false)
+      .map(doc => ({
         id: doc.id,
-        email: data.email,
-        connectedAt: data.connectedAt || null
-      };
-    });
+        email: doc.data().email,
+        connectedAt: doc.data().connectedAt || null
+      }));
 
-    return res.json({
+    res.json({
       success: true,
       accounts
     });
-
   } catch (error) {
     console.error("Accounts error:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
 
-// LIST GMAIL LABELS / FOLDERS
+/* LIST GMAIL LABELS */
+
 app.get("/api/gmail/labels", requireAuth, async (req, res) => {
   try {
-    const { accountId } = req.query;
+    const accountId = String(req.query.accountId || "");
 
     const { gmail } = await getGmail(
       req.user.uid,
@@ -616,32 +610,37 @@ app.get("/api/gmail/labels", requireAuth, async (req, res) => {
       type: label.type
     }));
 
-    return res.json({
+    res.json({
       success: true,
       labels
     });
-
   } catch (error) {
     console.error("Labels error:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
 
-// LIST EMAIL MESSAGES
+/* LIST EMAIL MESSAGES */
+
 app.get("/api/gmail/messages", requireAuth, async (req, res) => {
   try {
     const accountId = String(req.query.accountId || "");
+
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        message: "accountId required."
+      });
+    }
+
     const labelId = String(req.query.labelId || "INBOX");
 
     const maxResults = Math.min(
-      Math.max(
-        parseInt(req.query.maxResults || "40", 10) || 40,
-        1
-      ),
+      Math.max(parseInt(req.query.maxResults || "40", 10) || 40, 1),
       100
     );
 
@@ -663,10 +662,11 @@ app.get("/api/gmail/messages", requireAuth, async (req, res) => {
       listOptions.includeSpamTrash = true;
     }
 
-    const listResponse = await gmail.users.messages.list(
-      listOptions
-    );
+    if (req.query.pageToken) {
+      listOptions.pageToken = String(req.query.pageToken);
+    }
 
+    const listResponse = await gmail.users.messages.list(listOptions);
     const items = listResponse.data.messages || [];
 
     const details = await Promise.all(
@@ -685,47 +685,40 @@ app.get("/api/gmail/messages", requireAuth, async (req, res) => {
           });
 
           return mapMessage(response.data, account);
-
         } catch (error) {
-          console.error(
-            "Message metadata error:",
-            item.id,
-            error.message
-          );
-
+          console.error("Message metadata error:", error.message);
           return null;
         }
       })
     );
 
-    return res.json({
+    res.json({
       success: true,
       messages: details.filter(Boolean),
       nextPageToken: listResponse.data.nextPageToken || null,
-      resultSizeEstimate:
-        listResponse.data.resultSizeEstimate || 0
+      resultSizeEstimate: listResponse.data.resultSizeEstimate || 0
     });
-
   } catch (error) {
     console.error("Messages error:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
 
-// READ ONE EMAIL
+/* READ ONE EMAIL */
+
 app.get("/api/gmail/message", requireAuth, async (req, res) => {
   try {
     const accountId = String(req.query.accountId || "");
     const messageId = String(req.query.id || "");
 
-    if (!messageId) {
+    if (!accountId || !messageId) {
       return res.status(400).json({
         success: false,
-        message: "Message ID is required."
+        message: "accountId and id required."
       });
     }
 
@@ -743,15 +736,14 @@ app.get("/api/gmail/message", requireAuth, async (req, res) => {
     const message = response.data;
     const headers = message.payload?.headers || [];
 
-    return res.json({
+    res.json({
       success: true,
       message: {
         id: message.id,
         threadId: message.threadId,
         from: getHeader(headers, "From"),
         to: getHeader(headers, "To"),
-        subject:
-          getHeader(headers, "Subject") || "(No subject)",
+        subject: getHeader(headers, "Subject") || "(No subject)",
         date: message.internalDate
           ? new Date(Number(message.internalDate)).toISOString()
           : getHeader(headers, "Date"),
@@ -762,75 +754,68 @@ app.get("/api/gmail/message", requireAuth, async (req, res) => {
         accountId: account.id
       }
     });
-
   } catch (error) {
     console.error("Read message error:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
   }
 });
 
-// DISCONNECT GMAIL ACCOUNT
-app.delete(
-  "/api/gmail/accounts/:id",
-  requireAuth,
-  async (req, res) => {
-    try {
-      const accountRef = accountCollection(req.user.uid)
-        .doc(req.params.id);
+/* DISCONNECT GMAIL ACCOUNT */
 
-      const snapshot = await accountRef.get();
+app.delete("/api/gmail/accounts/:id", requireAuth, async (req, res) => {
+  try {
+    const accountRef = accountCollection(req.user.uid)
+      .doc(req.params.id);
 
-      if (!snapshot.exists) {
-        return res.status(404).json({
-          success: false,
-          message: "Gmail account not found."
-        });
-      }
+    const snapshot = await accountRef.get();
 
-      await accountRef.delete();
-
-      return res.json({
-        success: true,
-        message: "Gmail account disconnected."
-      });
-
-    } catch (error) {
-      console.error("Disconnect error:", error);
-
-      return res.status(500).json({
+    if (!snapshot.exists) {
+      return res.status(404).json({
         success: false,
-        message: error.message
+        message: "Gmail account not found."
       });
     }
-  }
-);
 
-// ERROR HANDLER
+    await accountRef.delete();
+
+    res.json({
+      success: true,
+      message: "Gmail account disconnected."
+    });
+  } catch (error) {
+    console.error("Disconnect error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+/* ERROR HANDLER */
+
 app.use((error, req, res, next) => {
   console.error("Server error:", error);
 
-  if (res.headersSent) {
-    return next(error);
-  }
+  if (res.headersSent) return next(error);
 
-  return res.status(500).json({
+  res.status(500).json({
     success: false,
     message: "Internal server error."
   });
 });
 
-// START SERVER
-app.listen(PORT, () => {
+/* START SERVER */
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log("==================================");
   console.log("       JONY MAIL BACKEND");
   console.log("==================================");
   console.log("Server running on port:", PORT);
   console.log("Firebase Admin: initialized");
   console.log("Gmail OAuth: configured");
-  console.log("Dashboard:", DASHBOARD_URL);
-  console.log("Gmail API: ready");
 });
