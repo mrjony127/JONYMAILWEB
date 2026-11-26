@@ -1,19 +1,23 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JONY MAIL — Smart Mail Manager</title>
+<meta name="theme-color" content="#1c1b26">
+<title>JONY MAIL</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
 <style>
 :root{
- --bg:#030906;--panel:#07120d;--panel2:#0b1b13;
- --green:#00f58a;--green2:#13c975;--text:#effff6;
- --muted:#8ba99a;--border:#153b28;--blue:#159cff;--yellow:#ffd43b
+ --bg:#1c1b26;
+ --panel:#10131c;
+ --panel2:#252532;
+ --green:#a5e6c1;
+ --text:#e5e2ed;
+ --muted:#a5a3b2;
+ --border:#292b38;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
@@ -21,131 +25,341 @@ button,input{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
 button:disabled{opacity:.5;cursor:not-allowed}
-#authPage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 20%,#06351e 0%,#030906 65%)}
-.auth-card{width:100%;max-width:400px;background:#08150e;border:1px solid #17683c;border-radius:20px;padding:28px;box-shadow:0 0 45px #00f58a12}
-.logo{display:flex;align-items:center;gap:10px;font-size:25px;font-weight:900;letter-spacing:-1px}
-.logo-icon{width:39px;height:34px;border:3px solid var(--green);border-radius:7px;display:grid;place-items:center;color:var(--green);font-size:23px}
+
+/* LOGIN */
+
+#authPage{
+ min-height:100vh;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:20px;
+ background:radial-gradient(ellipse at top,#303044,#1c1b26 70%);
+}
+.auth-card{
+ width:100%;
+ max-width:420px;
+ background:#252532;
+ border:1px solid #454456;
+ border-radius:28px;
+ padding:30px;
+ box-shadow:0 15px 50px #0005;
+}
+.logo{display:flex;align-items:center;gap:10px;font-size:25px;font-weight:900}
 .logo span{color:var(--green)}
-.subtitle{font-size:12px;color:var(--muted);margin:10px 0 25px}
-.field{width:100%;padding:14px;background:#030b07;border:1px solid var(--border);border-radius:10px;color:white;margin:7px 0;outline:none}
+.logo-icon{
+ width:39px;height:34px;border:2px solid var(--green);
+ border-radius:8px;display:grid;place-items:center;color:var(--green)
+}
+.subtitle{font-size:13px;color:var(--muted);margin:12px 0 25px}
+.field{
+ width:100%;padding:15px;background:#171823;
+ border:1px solid #414151;border-radius:12px;color:white;margin:8px 0;outline:none
+}
 .field:focus{border-color:var(--green)}
-.btn{border:0;border-radius:9px;padding:13px 15px;background:linear-gradient(100deg,#00d978,#00f58a);color:#001b0d;font-weight:800;width:100%;margin-top:10px}
-.btn.secondary{background:#10251a;color:white;border:1px solid var(--border)}
-.auth-switch{text-align:center;color:var(--green);font-size:13px;margin-top:18px;cursor:pointer}
+.btn{
+ border:0;border-radius:30px;padding:14px;background:var(--green);
+ color:#17251d;font-weight:bold;width:100%;margin-top:12px
+}
+.btn.secondary{background:#373746;color:white;border:1px solid #555566}
+.auth-switch{text-align:center;color:var(--green);font-size:13px;margin-top:20px;cursor:pointer}
 #authStatus{font-size:12px;color:var(--muted);margin-top:12px;overflow-wrap:anywhere}
+
+/* HEADER */
+
 #app{min-height:100vh}
-.topbar{height:70px;border-bottom:1px solid var(--border);background:#06100b;display:flex;align-items:center;gap:20px;padding:0 22px;position:sticky;top:0;z-index:10}
-.topbar .logo{min-width:250px}
-.search-wrap{flex:1;max-width:680px;position:relative}
-.search-wrap span{position:absolute;left:15px;top:12px;color:#70dcb0;font-size:20px}
-.search{width:100%;height:44px;border-radius:30px;padding:0 18px 0 47px;background:#0a151e;border:1px solid #203b36;color:white;outline:none}
-.search:focus{border-color:var(--green)}
+.topbar{
+ height:78px;background:#1c1b26;display:flex;align-items:center;
+ gap:16px;padding:0 22px;position:sticky;top:0;z-index:20
+}
+.topbar .logo{min-width:220px}
+.search-wrap{flex:1;max-width:800px;position:relative}
+.search-wrap span{position:absolute;left:18px;top:12px;color:#c5c3d0;font-size:23px}
+.search{
+ width:100%;height:52px;border-radius:35px;padding:0 20px 0 52px;
+ background:#353541;border:1px solid transparent;color:white;outline:none;font-size:15px
+}
+.search:focus{border-color:var(--green);background:#41414e}
 .top-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
-.small-btn{background:#0b1c13;border:1px solid var(--border);color:white;padding:10px 13px;border-radius:9px}
-.small-btn:hover{border-color:var(--green);color:var(--green)}
-.avatar{width:39px;height:39px;border-radius:50%;background:var(--green);color:#002513;display:grid;place-items:center;font-size:19px;font-weight:bold}
-.layout{display:grid;grid-template-columns:275px minmax(350px,1fr) minmax(340px,410px);min-height:calc(100vh - 70px);max-width:1800px;margin:auto}
-.sidebar{background:#06100b;border-right:1px solid var(--border);padding:20px 14px;min-width:0}
-.connect-btn{width:100%;padding:14px;border:0;border-radius:10px;background:linear-gradient(100deg,#00c96c,#00f58a);font-weight:bold;color:#002111;font-size:14px}
-.section-label{font-size:10px;letter-spacing:1.5px;color:#9ab5a4;margin:24px 10px 9px;text-transform:uppercase}
-.nav{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:8px;color:#c8dbcf;font-size:13px;cursor:pointer;margin:3px 0}
-.nav:hover,.nav.active{background:#073d22;color:var(--green);box-shadow:inset 3px 0 var(--green)}
-.nav-icon{width:20px;text-align:center;font-size:16px}
-.count{margin-left:auto;border-radius:20px;background:#14251d;padding:3px 8px;color:#b8d4c3;font-size:10px}
-.account-item{display:flex;align-items:center;gap:9px;padding:10px 8px;border-radius:8px;cursor:pointer;color:#d3e3d9;font-size:12px;min-width:0}
-.account-item:hover,.account-item.active{background:#0c2919;color:var(--green)}
+.small-btn{background:#353541;border:0;color:white;padding:12px 15px;border-radius:25px}
+.small-btn:hover{background:#494958}
+.avatar{
+ width:42px;height:42px;border-radius:50%;background:var(--green);
+ color:#14251b;display:grid;place-items:center;font-size:19px;font-weight:bold
+}
+
+/* LAYOUT */
+
+.layout{
+ display:grid;grid-template-columns:250px minmax(0,1fr) 390px;
+ min-height:calc(100vh - 78px);max-width:1800px;margin:auto
+}
+.sidebar{background:#1c1b26;padding:20px 12px;min-width:0}
+.connect-btn{
+ width:180px;padding:17px;border:0;border-radius:18px;
+ background:#c3e7d2;color:#14251b;font-weight:bold;font-size:14px
+}
+.section-label{
+ font-size:11px;letter-spacing:1px;color:#aaa8b8;
+ margin:25px 10px 10px;text-transform:uppercase
+}
+.nav{
+ display:flex;align-items:center;gap:12px;padding:12px;
+ border-radius:0 25px 25px 0;color:#dedce7;font-size:13px;
+ cursor:pointer;margin:3px 0
+}
+.nav:hover,.nav.active{background:#393a49;color:var(--green)}
+.nav-icon{width:20px;text-align:center;font-size:17px}
+.count{margin-left:auto;border-radius:20px;background:#353541;padding:3px 8px;color:#ccc;font-size:10px}
+.account-item{
+ display:flex;align-items:center;gap:9px;padding:11px 8px;
+ border-radius:9px;cursor:pointer;color:#dedce7;font-size:12px;min-width:0
+}
+.account-item:hover,.account-item.active{background:#393a49;color:var(--green)}
 .gmail-icon{width:24px;height:22px;flex-shrink:0;object-fit:contain}
 .account-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .online-dot{width:7px;height:7px;background:var(--green);border-radius:50%;flex-shrink:0}
-.account-more{width:100%;margin-top:8px;padding:10px;background:#10251b;color:#d9eee1;border:1px solid var(--border);border-radius:8px;font-size:12px}
-.premium{margin-top:27px;padding:15px;border:1px solid #137344;border-radius:12px;background:linear-gradient(135deg,#0b2415,#06100b)}
+.account-more{
+ width:100%;margin-top:8px;padding:11px;background:#353541;
+ color:white;border:1px solid #494958;border-radius:10px;font-size:12px
+}
+.premium{
+ margin-top:25px;padding:15px;border:1px solid #454456;
+ border-radius:15px;background:#252532
+}
 .premium-title{font-size:13px;font-weight:bold}
 .premium p{font-size:11px;color:var(--muted);margin:7px 0}
 .premium strong{color:var(--green)}
+
+/* MAIN */
+
 .main{padding:20px;min-width:0}
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:25px}
-.stat-card{background:linear-gradient(140deg,#101c20,#09120e);border:1px solid #1c3930;border-radius:13px;padding:15px;min-width:0}
+.stats{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;margin-bottom:25px
+}
+.stat-card{
+ background:#252532;border:1px solid #383847;border-radius:16px;
+ padding:15px;min-width:0
+}
 .stat-top{display:flex;align-items:center;gap:10px}
-.stat-icon{font-size:25px}
-.stat-label{font-size:11px;color:#c3d4ca}
+.stat-icon{font-size:24px}
+.stat-label{font-size:11px;color:#c3c0ce}
 .stat-value{font-size:22px;font-weight:800;margin-top:6px}
-.stat-card.green{border-color:#116c3d}
-.stat-card.blue .stat-icon{color:var(--blue)}
-.stat-card.yellow .stat-icon{color:var(--yellow)}
-.section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 15px}
+.stat-card.green{border-color:#548d70}
+.stat-card.blue .stat-icon{color:#9ab9ff}
+.stat-card.yellow .stat-icon{color:#f6c94d}
+
+.section-heading{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:10px;margin:8px 0 15px
+}
 .section-heading h2{font-size:20px;margin:0}
 .green-text{color:var(--green)}
 .message-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.tool-btn{background:#0c1a12;border:1px solid var(--border);color:#d9e8df;padding:8px 10px;border-radius:8px;font-size:11px}
+.tool-btn{
+ background:#353541;border:1px solid #494958;color:#e5e2ed;
+ padding:9px 12px;border-radius:20px;font-size:11px
+}
 .tool-btn:hover{border-color:var(--green);color:var(--green)}
-.message-list{border:1px solid #173a29;border-radius:12px;overflow:hidden;background:#06100b}
-.message{display:flex;align-items:center;gap:11px;padding:14px 12px;border-bottom:1px solid #14271d;cursor:pointer;min-width:0;transition:.15s}
+
+/* GMAIL MESSAGE LIST */
+
+.message-list{
+ border:1px solid #292b38;border-radius:12px;
+ overflow:hidden;background:#10131c
+}
+.message{
+ display:flex;align-items:center;gap:13px;
+ padding:17px 15px;border-bottom:1px solid #252733;
+ cursor:pointer;min-width:0;transition:.15s
+}
 .message:last-child{border-bottom:0}
-.message:hover{background:#0d2116}
-.message.selected{background:#0b2c19;outline:1px solid #00b85f}
+.message:hover{background:#242633}
+.message.selected{background:#303343;outline:1px solid #a5e6c1}
 .message.unread .sender,.message.unread .subject{font-weight:bold;color:white}
-.sender-avatar{width:39px;height:39px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;font-weight:bold;font-size:16px;color:white;background:#7622d5}
+.sender-avatar{
+ width:43px;height:43px;flex-shrink:0;border-radius:50%;
+ display:grid;place-items:center;font-weight:bold;font-size:17px;color:white;
+ background:#7622d5
+}
 .message-content{flex:1;min-width:0}
 .message-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.sender{font-size:12px;color:#d9e7de;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.date{font-size:10px;color:#94aa9b;white-space:nowrap}
-.subject{font-size:12px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.snippet{font-size:11px;color:#8da495;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sender{font-size:14px;color:#e4e2eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.date{font-size:11px;color:#b0adbd;white-space:nowrap}
+.subject{font-size:14px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.snippet{font-size:12px;color:#aaa8b7;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .source{font-size:10px;color:var(--green);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.unread-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+.unread-dot{width:9px;height:9px;border-radius:50%;background:#c3b9ed;flex-shrink:0}
+.star-icon{font-size:21px;color:#aaa8b7;margin-left:5px;flex-shrink:0}
 .empty{padding:55px 15px;text-align:center;color:var(--muted);font-size:13px}
-.reader-panel{border-left:1px solid var(--border);background:#050d08;padding:18px;min-width:0;position:relative}
-.reader-empty{height:100%;min-height:500px;display:flex;align-items:center;justify-content:center;text-align:center;color:#718c7b;font-size:13px}
-.reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:15px;border-bottom:1px solid var(--border)}
-.reader-toolbar button{background:transparent;border:0;color:#b6c7bd;font-size:19px;padding:5px}
+
+/* EMAIL READER */
+
+.reader-panel{
+ border-left:1px solid #353541;background:#20202b;
+ padding:18px;min-width:0;position:relative
+}
+.reader-empty{
+ height:100%;min-height:500px;display:flex;align-items:center;
+ justify-content:center;text-align:center;color:#aaa8b7;font-size:13px
+}
+.reader-toolbar{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:8px;padding-bottom:15px;border-bottom:1px solid #414151
+}
+.reader-toolbar button{background:transparent;border:0;color:#c7c4d2;font-size:19px;padding:5px}
 .reader-toolbar button:hover{color:var(--green)}
 .reader-subject{font-size:19px;line-height:1.4;margin:20px 0 15px;overflow-wrap:anywhere}
-.inbox-tag{display:inline-block;background:#064e2b;color:#5cffae;padding:4px 9px;border-radius:6px;font-size:10px;margin-left:5px}
+.inbox-tag{
+ display:inline-block;background:#3d594b;color:#b9f2d0;
+ padding:5px 10px;border-radius:12px;font-size:10px;margin-left:5px
+}
 .reader-sender{display:flex;align-items:center;gap:11px;margin:15px 0}
 .reader-sender .sender-avatar{width:42px;height:42px}
 .reader-sender-name{font-size:13px;font-weight:bold}
 .reader-sender-email{font-size:10px;color:var(--muted);margin-top:4px}
 .reader-date{font-size:10px;color:var(--muted);margin-left:auto}
 .reader-meta{font-size:11px;color:var(--muted);line-height:1.8;white-space:pre-wrap;margin-bottom:15px}
-.reader-body{font-size:13px;line-height:1.8;color:#dbe9e0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:48vh;overflow:auto;padding:8px 0}
-.otp-box{padding:14px;margin:12px 0;background:linear-gradient(130deg,#082a18,#07130d);border:1px solid #087c43;border-radius:12px}
-.otp-label{font-size:11px;color:#a8cbb7}
+.reader-body{
+ font-size:13px;line-height:1.8;color:#e0deea;white-space:pre-wrap;
+ overflow-wrap:anywhere;max-height:48vh;overflow:auto;padding:8px 0
+}
+.otp-box{
+ padding:14px;margin:12px 0;background:#242c35;
+ border:1px solid #5b9776;border-radius:14px
+}
+.otp-label{font-size:11px;color:#b9d8c6}
 .otp-code{font-size:27px;font-weight:900;letter-spacing:5px;color:var(--green);margin:9px 0}
-.copy-btn{width:100%;padding:11px;border:1px solid #00bd68;border-radius:25px;background:#062516;color:var(--green);font-weight:bold}
-.copy-btn:hover{background:#0b4b2b}
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#123a24;color:white;padding:12px 18px;border:1px solid #21854f;border-radius:10px;z-index:100;display:none;font-size:12px;max-width:90%;text-align:center}
-.mobile-menu{display:none}
-.mobile-back{display:none}
+.copy-btn{
+ width:100%;padding:11px;border:1px solid var(--green);
+ border-radius:25px;background:#283a30;color:var(--green);font-weight:bold
+}
+.copy-btn:hover{background:#354d3f}
+#toast{
+ position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+ background:#353541;color:white;padding:12px 18px;
+ border:1px solid #77758a;border-radius:25px;z-index:100;
+ display:none;font-size:12px;max-width:90%;text-align:center
+}
+.mobile-menu,.mobile-back{display:none}
 #readerLoading{color:var(--muted);font-size:12px;margin:20px 0}
 .status{font-size:12px;color:var(--muted);margin:0 0 10px}
+
+/* SIDEBAR BACK BUTTON - NEW */
+
+.sidebar-back-button{
+ display:none;
+}
+
+/* TABLET */
+
 @media(max-width:1100px){
- .layout{grid-template-columns:245px minmax(0,1fr)}
- .reader-panel{grid-column:2;border-left:0;border-top:1px solid var(--border);min-height:400px}
+ .layout{grid-template-columns:230px minmax(0,1fr)}
+ .reader-panel{
+  grid-column:2;border-left:0;border-top:1px solid #353541;
+  min-height:400px
+ }
  .reader-empty{min-height:250px}
 }
+
+/* MOBILE - GMAIL APP STYLE */
+
 @media(max-width:700px){
- .topbar{height:60px;padding:0 12px;gap:9px}
- .topbar .logo{min-width:0;font-size:19px}
- .logo-icon{width:31px;height:29px;font-size:18px}
- .topbar .search-wrap{display:none}
+ body{background:#1c1b26}
+ .topbar{
+  height:75px;padding:0 13px;gap:10px;
+  background:#1c1b26
+ }
+ .topbar .logo{display:none}
+ .topbar .search-wrap{display:block}
+ .search-wrap{max-width:none}
+ .search{height:52px;border-radius:35px;font-size:14px}
  .top-actions{gap:5px}
- .small-btn{padding:8px 9px;font-size:12px}
- .layout{display:block;min-height:calc(100vh - 60px)}
- .sidebar{position:fixed;left:-290px;top:60px;bottom:0;width:275px;z-index:30;overflow:auto;transition:left .2s;box-shadow:15px 0 35px #0009}
+ .top-actions .small-btn{display:none}
+ .avatar{width:36px;height:36px}
+ .mobile-menu{
+  display:inline-block;background:transparent;
+  border:0;color:#e5e2ed;font-size:23px;padding:5px
+ }
+ .layout{display:block;min-height:calc(100vh - 75px)}
+ .sidebar{
+  position:fixed;left:-290px;top:0;bottom:0;width:275px;
+  z-index:40;overflow:auto;transition:left .2s;
+  box-shadow:15px 0 35px #0009;background:#252532
+ }
  .sidebar.open{left:0}
- .mobile-menu{display:inline-block}
- .main{padding:13px}
- .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px}
- .stat-card{padding:11px}
- .stat-value{font-size:19px}
- .section-heading h2{font-size:18px}
- .message{padding:12px 9px;gap:8px}
- .sender-avatar{width:34px;height:34px;font-size:13px}
- .reader-panel{display:none;position:fixed;inset:60px 0 0;z-index:25;overflow:auto;border:0;padding:15px;background:#050d08}
+
+ /* NEW BACK BUTTON */
+ .sidebar-back-button{
+  position:fixed;
+  left:275px;
+  top:50%;
+  transform:translateY(-50%);
+  width:36px;
+  height:62px;
+  z-index:41;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:#252532;
+  color:var(--green);
+  border:1px solid #59645e;
+  border-left:0;
+  border-radius:0 13px 13px 0;
+  font-size:27px;
+  box-shadow:8px 0 20px #0007;
+  padding:0;
+ }
+ .sidebar.open + .sidebar-back-button{
+  display:flex;
+ }
+
+ .main{padding:9px 8px 90px}
+ .stats{display:none}
+ .section-heading{margin:9px 8px 13px}
+ .section-heading h2{font-size:16px}
+ .message-tools .tool-btn{padding:7px 10px}
+ #mobileSearch{display:none}
+ .status{padding:0 10px;font-size:11px}
+ .message-list{border:0;border-radius:0;background:#1c1b26}
+ .message{
+  padding:17px 13px;
+  gap:12px;
+  min-height:85px;
+  background:#10131c;
+  border-bottom:2px solid #252733;
+  border-radius:5px;
+  margin-bottom:3px
+ }
+ .sender-avatar{width:45px;height:45px;font-size:18px}
+ .sender{font-size:14px}
+ .subject{font-size:14px;margin-top:6px}
+ .snippet{font-size:12px}
+ .date{font-size:11px}
+ .source{font-size:10px}
+ .unread-dot{width:8px;height:8px}
+ .reader-panel{
+  display:none;position:fixed;inset:0;z-index:50;
+  overflow:auto;border:0;padding:15px;background:#1c1b26
+ }
  .reader-panel.mobile-open{display:block}
  .mobile-back{display:inline-block}
  .reader-empty{min-height:250px}
  .reader-body{max-height:none}
+ .reader-subject{font-size:20px}
+ .reader-sender{margin-top:20px}
+ .reader-toolbar{position:sticky;top:-15px;background:#1c1b26;z-index:2;padding:10px 0}
+}
+
+/* SMALL PHONE */
+
+@media(max-width:380px){
+ .message{padding:14px 9px;gap:9px}
+ .sender-avatar{width:39px;height:39px}
+ .sender{font-size:13px}
+ .subject{font-size:13px}
+ .date{font-size:10px}
 }
 </style>
 </head>
@@ -177,12 +391,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 <section id="app" class="hidden">
  <header class="topbar">
-  <button class="small-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+  <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+
   <div class="logo"><div class="logo-icon">✉</div> JONY <span>MAIL</span></div>
 
   <div class="search-wrap">
    <span>⌕</span>
-   <input id="searchBox" class="search" placeholder="Search messages, sender, subject..." oninput="renderMessages()">
+   <input id="searchBox" class="search" placeholder="Search in mail..." oninput="renderMessages()">
   </div>
 
   <div class="top-actions">
@@ -200,15 +415,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
    <div class="section-label">Your Gmail Accounts</div>
    <div id="accountList"></div>
+
    <div class="premium">
-    <div class="premium-title">♛ &nbsp; JONY MAIL</div>
+    <div class="premium-title">♛ JONY MAIL</div>
     <p>Manage your Gmail accounts in one place.</p>
     <strong id="accountLimit">0 / 20 Accounts</strong>
    </div>
+
    <button class="account-more" onclick="logout()">⇥ Sign out</button>
   </aside>
 
+  <!-- NEW SIDEBAR BACK BUTTON -->
+  <button class="sidebar-back-button"
+          onclick="closeSidebar()"
+          aria-label="Close sidebar">‹</button>
+
   <main class="main">
+
    <div class="stats">
     <div class="stat-card blue">
      <div class="stat-top"><div class="stat-icon">✉</div><div class="stat-label">Total Messages</div></div>
@@ -236,21 +459,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
     </div>
    </div>
 
-   <div class="search-wrap" style="max-width:none;margin-bottom:14px">
+   <div class="search-wrap" id="mobileSearchWrap" style="max-width:none;margin-bottom:14px">
     <span>⌕</span>
     <input id="mobileSearch" class="search" placeholder="Search your emails..." oninput="syncSearch(this.value)">
    </div>
 
    <div class="status" id="loadStatus">Connecting...</div>
+
    <div class="message-list" id="messageList">
     <div class="empty">Your messages will appear here.</div>
    </div>
+
   </main>
 
   <aside class="reader-panel" id="readerPanel">
    <div class="reader-empty">
     <div>
-     <div style="font-size:45px;color:#1b7144">✉</div>
+     <div style="font-size:45px;color:#a5e6c1">✉</div>
      <div style="margin-top:12px">Select an email to read</div>
      <div style="font-size:11px;margin-top:7px">Your selected message will appear here.</div>
     </div>
@@ -263,6 +488,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 <script>
 /* FIREBASE CONFIG */
+
 const firebaseConfig={
  apiKey:"AIzaSyCnd_LT7H3o5HHbTFAZAHo6e2donTrN6sM",
  authDomain:"jony-mail-hub-2466c.firebaseapp.com",
@@ -290,6 +516,11 @@ let readerRequestNumber=0;
 let selectedMessage=null;
 let toastTimer=null;
 
+/* BACK BUTTON STATE */
+let readerHistoryOpen=false;
+let sidebarHistoryOpen=false;
+let ignoreNextPopState=false;
+
 const SYSTEM_FOLDERS=[
  {id:"INBOX",name:"All Inbox",icon:"✉"},
  {id:"STARRED",name:"Starred",icon:"★"},
@@ -302,6 +533,7 @@ const SYSTEM_FOLDERS=[
 const $=id=>document.getElementById(id);
 
 /* SAFE DOM HELPERS */
+
 function setText(id,value){
  const element=$(id);
  if(element)element.textContent=String(value??"");
@@ -354,8 +586,35 @@ function syncSearch(value){
  renderMessages();
 }
 
+/* SIDEBAR OPEN / CLOSE */
+
 function toggleSidebar(){
- $("sidebar")?.classList.toggle("open");
+ const sidebar=$("sidebar");
+ if(!sidebar)return;
+
+ if(sidebar.classList.contains("open")){
+  closeSidebar();
+ }else{
+  sidebar.classList.add("open");
+
+  if(window.matchMedia("(max-width:700px)").matches){
+   history.pushState({jonyMail:"sidebar"},"","#jony-mail-sidebar");
+   sidebarHistoryOpen=true;
+  }
+ }
+}
+
+function closeSidebar(){
+ const sidebar=$("sidebar");
+ if(!sidebar)return;
+
+ sidebar.classList.remove("open");
+
+ if(sidebarHistoryOpen){
+  sidebarHistoryOpen=false;
+  ignoreNextPopState=true;
+  history.back();
+ }
 }
 
 function formatDate(value){
@@ -387,9 +646,7 @@ async function api(path,options={}){
  });
 
  let data={};
- try{
-  data=await response.json();
- }catch(error){}
+ try{data=await response.json();}catch(error){}
 
  if(!response.ok){
   throw new Error(data.message||data.error||"Server error: "+response.status);
@@ -399,6 +656,7 @@ async function api(path,options={}){
 }
 
 /* AUTHENTICATION */
+
 async function login(){
  const email=$("loginEmail")?.value.trim();
  const password=$("loginPassword")?.value;
@@ -479,6 +737,12 @@ auth.onAuthStateChanged(async user=>{
   selectedFolder="INBOX";
   selectedMessage=null;
 
+  readerHistoryOpen=false;
+  sidebarHistoryOpen=false;
+
+  $("sidebar")?.classList.remove("open");
+  $("readerPanel")?.classList.remove("mobile-open");
+
   setText("connectedCount","0");
   setText("accountLimit","0 / 20 Accounts");
   setHTML("accountList","");
@@ -489,6 +753,7 @@ auth.onAuthStateChanged(async user=>{
 });
 
 /* ACCOUNTS */
+
 async function loadAccounts(){
  const thisUser=currentUser;
 
@@ -558,7 +823,7 @@ function renderAccounts(){
    renderFolders();
    loadMessages();
 
-   $("sidebar")?.classList.remove("open");
+   closeSidebar();
   };
 
   container.appendChild(item);
@@ -575,10 +840,11 @@ function selectAllAccounts(){
  renderFolders();
  loadMessages();
 
- $("sidebar")?.classList.remove("open");
+ closeSidebar();
 }
 
 /* FOLDERS */
+
 function renderFolders(){
  const container=$("systemFolders");
  if(!container)return;
@@ -604,7 +870,7 @@ function renderFolders(){
    selectedMessage=null;
    renderFolders();
    loadMessages();
-   $("sidebar")?.classList.remove("open");
+   closeSidebar();
   };
 
   container.appendChild(item);
@@ -642,7 +908,7 @@ async function loadCustomLabels(){
      selectedMessage=null;
      renderFolders();
      loadMessages();
-     $("sidebar")?.classList.remove("open");
+     closeSidebar();
     };
 
     container.appendChild(item);
@@ -663,7 +929,8 @@ function folderName(id){
  return custom?custom.name:"Messages";
 }
 
-/* LOAD EMAILS — FIXED REQUEST HANDLING */
+/* LOAD ALL GMAIL MESSAGES */
+
 async function loadMessages(){
  const myRequest=++requestNumber;
  const userAtStart=currentUser;
@@ -696,9 +963,7 @@ async function loadMessages(){
  messages=[];
  renderMessages();
 
- const title=setText("pageTitle",folderName(folderAtStart));
- if(title)title.textContent=folderName(folderAtStart);
-
+ setText("pageTitle",folderName(folderAtStart));
  setText("loadStatus","Loading messages...");
 
  try{
@@ -762,6 +1027,7 @@ async function reloadEverything(){
 }
 
 /* DASHBOARD COUNTS */
+
 function updateStats(){
  setText("totalCount",messages.length);
  setText("unreadCount",messages.filter(message=>message.unread).length);
@@ -773,6 +1039,7 @@ function updateStats(){
 }
 
 /* MESSAGE LIST */
+
 const avatarColors=["#7b20d4","#087bd4","#dc3434","#009b68","#e88711","#be2d85"];
 
 function avatarColor(value){
@@ -868,6 +1135,7 @@ function renderMessages(){
 }
 
 /* OTP DETECTION */
+
 function findOTP(text){
  const patterns=[
   /(?:otp|verification code|security code|one[- ]time code|passcode|confirmation code|your code is)[^\d]{0,40}(\d{4,8})/i,
@@ -905,7 +1173,8 @@ async function copyOTP(code){
  }
 }
 
-/* EMAIL READER — FIXED NULL AND RACE ISSUES */
+/* EMAIL READER */
+
 function readerToolbar(){
  return `
   <div class="reader-toolbar">
@@ -936,6 +1205,12 @@ async function openMessage(message){
  if(!panel){
   toast("Email reader panel not found.");
   return;
+ }
+
+ /* PHONE BACK HISTORY */
+ if(window.matchMedia("(max-width:700px)").matches && !readerHistoryOpen){
+  history.pushState({jonyMail:"reader"},"","#jony-mail-reader");
+  readerHistoryOpen=true;
  }
 
  panel.classList.add("mobile-open");
@@ -1017,7 +1292,7 @@ async function openMessage(message){
 
    const button=document.createElement("button");
    button.className="copy-btn";
-   button.textContent="▢  COPY OTP";
+   button.textContent="▢ COPY OTP";
    button.onclick=()=>copyOTP(otp);
 
    box.append(label,code,button);
@@ -1039,8 +1314,20 @@ async function openMessage(message){
  }
 }
 
-function closeReader(){
+function closeReader(fromPopState=false){
+ /* TOOLBAR BACK BUTTON */
+ if(!fromPopState && readerHistoryOpen){
+  readerHistoryOpen=false;
+  ignoreNextPopState=true;
+  history.back();
+ }
+
+ if(fromPopState){
+  readerHistoryOpen=false;
+ }
+
  readerRequestNumber++;
+
  const panel=$("readerPanel");
 
  if(panel)panel.classList.remove("mobile-open");
@@ -1049,7 +1336,49 @@ function closeReader(){
  renderMessages();
 }
 
+/* ANDROID / BROWSER BACK BUTTON */
+
+window.addEventListener("popstate",function(){
+
+ if(ignoreNextPopState){
+  ignoreNextPopState=false;
+  return;
+ }
+
+ const sidebar=$("sidebar");
+ const panel=$("readerPanel");
+
+ /* SIDEBAR BACK */
+ if(sidebarHistoryOpen){
+  sidebarHistoryOpen=false;
+  sidebar?.classList.remove("open");
+  return;
+ }
+
+ /* EMAIL READER BACK */
+ if(readerHistoryOpen){
+  readerHistoryOpen=false;
+
+  if(panel && panel.classList.contains("mobile-open")){
+   closeReader(true);
+  }
+
+  return;
+ }
+
+ /* FALLBACK */
+ if(sidebar && sidebar.classList.contains("open")){
+  sidebar.classList.remove("open");
+  return;
+ }
+
+ if(panel && panel.classList.contains("mobile-open")){
+  closeReader(true);
+ }
+});
+
 /* CONNECT GMAIL */
+
 async function connectGmail(){
  if(accounts.length>=20){
   toast("Maximum 20 Gmail accounts allowed.");
@@ -1076,6 +1405,7 @@ async function connectGmail(){
 }
 
 /* OAUTH RETURN */
+
 function handleOAuthReturn(){
  const params=new URLSearchParams(window.location.search);
 
